@@ -97,9 +97,48 @@ int main() {
           //Give ID to ego lane for convenience. Left Lane = 0, Ego Lane = 1 and Right Lane = 2. Start with Ego Lane
           int lane = 1;
           
-          double ref_vel = 49.5; //Reference Velocity
+          static double ref_vel = 0.0; //Reference Velocity
           
           int prev_size = previous_path_x.size();
+          
+          if(prev_size > 0)
+          {
+            car_s = end_path_s;
+          }
+          
+          bool too_close = false;
+          
+          for(int i=0;i<sensor_fusion.size();i++)
+          {
+            //car is in the ego lane
+            float d = sensor_fusion[i][6];
+            if(d < (2+4*lane+2) && d > (2+4*lane-2))//This checks if lateral distance of the car from the double yellow refline.
+            {
+              double vx = sensor_fusion[i][3];
+              double vy = sensor_fusion[i][4];
+              double check_speed = sqrt(vx*vx + vy*vy);
+              double check_car_s = sensor_fusion[i][5];
+              
+              check_car_s += ((double)prev_size * .02 * check_speed);
+              
+              //Check relative s values and gap
+              
+              if((check_car_s > car_s) && ((check_car_s - car_s) < 30))
+              {
+                too_close = true;
+              }
+            }
+          }
+          
+          if(too_close)
+          {
+            ref_vel -= 0.224;
+          }
+          else if(ref_vel < 49.5)
+          {
+            //printf("HERE!!!\n");
+            ref_vel += 0.224;
+          }
           
           vector<double> ptsx, ptsy;
           double ref_x = car_x;
@@ -158,13 +197,13 @@ int main() {
             double shift_y = ptsy[i] - ref_y;
             
             ptsx[i] = (shift_x * cos(0-ref_yaw) - shift_y * sin(0-ref_yaw));
-            ptsy[i] = (shift_y * cos(0-ref_yaw) + shift_y * sin(0-ref_yaw));
+            ptsy[i] = (shift_x * sin(0-ref_yaw) + shift_y * cos(0-ref_yaw));
           }
           
           //Debug
           for(int i=0;i<ptsx.size();i++)
           {
-            printf("%.3f\n",ptsx[i]);
+            //printf("%.3f\n",ptsx[i]);
           }
           
           //Create a spline
@@ -173,7 +212,7 @@ int main() {
           
           //Populate actual path planner vectors
           
-          for(int i=0;i<previous_path_x.size();i++)
+          for(int i=0;i<prev_size;i++)
           {
             next_x_vals.push_back(previous_path_x[i]);
             next_y_vals.push_back(previous_path_y[i]);
@@ -187,7 +226,7 @@ int main() {
           double x_add_on = 0.0;
           
           //Fill the remainder of the previous points to the path planner
-          for(int i=1;i<=50-previous_path_x.size();i++)
+          for(int i=1;i<50-previous_path_x.size();i++)
           {
             double N = (target_dist/(0.02*ref_vel/2.24));
             double x_point = x_add_on + (target_x/N);
@@ -200,7 +239,7 @@ int main() {
             
             //rotate back to normal after rotating it earlier
             x_point = x_ref * cos(ref_yaw) - y_ref * sin(ref_yaw);
-            y_point = x_ref * cos(ref_yaw) + y_ref * sin(ref_yaw);
+            y_point = x_ref * sin(ref_yaw) + y_ref * cos(ref_yaw);
             
             x_point += ref_x;
             y_point += ref_y;
