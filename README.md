@@ -36,6 +36,11 @@ If there's a slower vehicle in front of the lane, and it is safe to make a lane 
 
 The car was able to drive around 4.5 miles without incident with safe lane changes.
 
+<p>
+    <img src="data/Screenshot 2021-10-20 at 11.01.47 PM.png"/>
+</p>
+
+
 ## Reflection
 1. A state machine with cost functions would optimize the lane change logic, and avoid unnecessary lane changes
 2. Its not sure how the ego vehicle would behave with sudden cut-ins of other vehicles. The velocity of the ego vehicle is constantly decreased in the current implementation. Intelligence could be added for tougher deceleration for collision avoidance. 
