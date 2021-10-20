@@ -95,7 +95,7 @@ int main() {
           vector<double> next_y_vals;
           
           //Give ID to ego lane for convenience. Left Lane = 0, Ego Lane = 1 and Right Lane = 2. Start with Ego Lane
-          int lane = 1;
+          static int lane = 1;
           
           static double ref_vel = 0.0; //Reference Velocity
           
@@ -107,6 +107,7 @@ int main() {
           }
           
           bool too_close = false;
+          
           
           for(int i=0;i<sensor_fusion.size();i++)
           {
@@ -133,7 +134,79 @@ int main() {
           if(too_close)
           {
             ref_vel -= 0.224;
+            
+            if(ref_vel < 42)//If reference velocity is too low, check if we could switch to a faster lane
+            {
+              if(lane > 0) //left lane is available
+              {
+                int tmp_lane = lane - 1;
+                
+                for(int i=0;i<sensor_fusion.size();i++)
+                {
+                  //car is in the ego lane
+                  float obj_d = sensor_fusion[i][6];
+                  if(obj_d < (2+4*tmp_lane+2) && obj_d > (2+4*tmp_lane-2))//This checks if lateral distance of the car from the double yellow refline.
+                  {
+                    double vx = sensor_fusion[i][3];
+                    double vy = sensor_fusion[i][4];
+                    double check_speed = sqrt(vx*vx + vy*vy);
+                    double check_car_s = sensor_fusion[i][5];
+
+                    check_car_s += ((double)prev_size * .02 * check_speed);
+                    float new_ego_s = car_s + ((double)prev_size * .02 * car_speed);
+
+                    //Check relative s values and gap
+
+                    if((check_car_s > new_ego_s) && ((check_car_s - new_ego_s) < 30)  
+                      || (new_ego_s > check_car_s) && (new_ego_s - check_car_s < 10))
+                    {
+                      
+                    }
+                    else
+                    {
+                      lane = tmp_lane;
+                    }
+                  }
+                }
+                
+              }
+              else
+              {
+                //Right lane is available
+                int tmp_lane = lane + 1;
+                
+                for(int i=0;i<sensor_fusion.size();i++)
+                {
+                  //car is in the ego lane
+                  float obj_d = sensor_fusion[i][6];
+                  if(obj_d < (2+4*tmp_lane+2) && obj_d > (2+4*tmp_lane-2))//This checks if lateral distance of the car from the double yellow refline.
+                  {
+                    double vx = sensor_fusion[i][3];
+                    double vy = sensor_fusion[i][4];
+                    double check_speed = sqrt(vx*vx + vy*vy);
+                    double check_car_s = sensor_fusion[i][5];
+
+                    check_car_s += ((double)prev_size * .02 * check_speed);
+                    float new_ego_s = car_s + ((double)prev_size * .02 * car_speed);
+
+                    //Check relative s values and gap
+
+                    if((check_car_s > new_ego_s) && ((check_car_s - new_ego_s) < 30)  
+                      || (new_ego_s > check_car_s) && (new_ego_s - check_car_s < 10))
+                    {
+                      
+                    }
+                    else
+                    {
+                      lane = tmp_lane;
+                    }
+                  }
+                }
+              }
+            }
+            
           }
+            
           else if(ref_vel < 49.5)
           {
             //printf("HERE!!!\n");
