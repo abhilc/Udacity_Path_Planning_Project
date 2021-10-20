@@ -1,3 +1,47 @@
+# High level description of implementation 
+The project code is contained in the main.cpp file. The path planner(or the behavioral module) is a macroscopic behavior of the vehicle as compared to the lower layers(such as sensor fusion) which return in milliseconds. The path planner plans the future trajectory of the vehicle for approximately 90m. The Ego vehicle then traverses all points of the generated trajectory. Therefore, it is important that the generated trajectory has no abrupt corners or gaps that may lead to the ego vehicle's uncomfortable acceleration change(also known as jerk). To counter this, an off the shelf spline library is used. Splines are piecewise functions that smoothen the abrupt changes in the XY co-ordinates of points. 
+
+
+## Inputs
+1. Localization information of the ego vehicle in frenet coordinates
+2. Information from Sensor Fusion of all the surrounding vehicles(components of velocity, frenet coordinates etc)
+3. Previous path planning data
+(For details of each input, refer lines: 74-90 in src/main.cpp file)
+
+## Algorithm for Planning
+1. The goal is to construct 50 points (x, y) such that the vehicle traverses each point in 20ms timestep
+2. 50 points are constructed the very first cycle. From the second cycle, new points are mostly appended to the previous planned path
+3. From lines 182 - 210 in main.cpp file, the initial points are created/appended based on the information from the previous path
+4. These points are rotated by the respective sine and cosine components of the ego vehicle's yaw, such that the vector joining the two points is tangent to the   vehicle's yaw. This is necessary, otherwise we would have sharp corners in the final generated spline
+5. After step 4, new XY points are populated 30m apart. Frenet co-ordinates are used. Here, s coordinate differs by 30m each point, where as y co-ordinate depends on our target lane id. 
+6. From lines 228-235 each of these points is translated to car coordinate system. By multiplying column vector [x, y] with the rotation matrix
+7. Spline is created on line 238
+8. From line 258-278 each x, y point is extracted from the above created spline based such that the spacing between these points is ensured to keep the vehicle within the speed limit. 
+
+## Lane change logic
+If there's a slower vehicle in front of the lane, and it is safe to make a lane change, then a lane change is executed
+1. From lines 109-175, lane change logic is contained
+2. Three booleans determine whether we need a lane change maneuver. car_ahead, car_left and car_right
+3. For ego lane, if a vehicle is detected within 30m from the future position of the ego vehicle. car_ahead is set to true. 
+4. For car_left and car_right, clearance is also checked for 30m in the rear. This can be seen from lines 146-153
+
+
+## Lane change execution
+1. If the boolean car_ahead is true, lane change would be ideal
+2. Here, the corresponding booleans car_left and car_right are checked. If the lane id is permissible, and the booleans are false(which means the lane is clear to change), the target lane id is changed. The maneuver is then taken care on lines 214-216 where the waypoints are added based on the target lane id
+3. If the lane change is successful, we accelerate back to max speed limit. Otherwise, we stay in the lane
+
+
+## Results
+
+The car was able to drive around 4.5 miles without incident with safe lane changes.
+
+## Reflection
+1. A state machine with cost functions would optimize the lane change logic, and avoid unnecessary lane changes
+2. Its not sure how the ego vehicle would behave with sudden cut-ins of other vehicles. The velocity of the ego vehicle is constantly decreased in the current implementation. Intelligence could be added for tougher deceleration for collision avoidance. 
+
+
+
 # CarND-Path-Planning-Project
 Self-Driving Car Engineer Nanodegree Program
    
